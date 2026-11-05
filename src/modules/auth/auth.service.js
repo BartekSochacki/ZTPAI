@@ -2,9 +2,9 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { UnauthorizedError } = require("../../errors/AppError");
 
-const DUMMY_HASH = bcrypt.hashSync("dummy-password-for-timing", 10);
-
 function createAuthService({ usersRepository, config }) {
+  const dummyHash = bcrypt.hashSync("dummy-password-for-timing", config.BCRYPT_COST);
+
   async function register({ email, password }) {
     const passwordHash = await bcrypt.hash(password, config.BCRYPT_COST);
     return usersRepository.create({ email, passwordHash, role: "USER" });
@@ -12,7 +12,7 @@ function createAuthService({ usersRepository, config }) {
 
   async function login({ email, password }) {
     const user = await usersRepository.findByEmail(email);
-    const passwordOk = await bcrypt.compare(password, user ? user.passwordHash : DUMMY_HASH);
+    const passwordOk = await bcrypt.compare(password, user ? user.passwordHash : dummyHash);
     if (!user || !passwordOk) {
       throw new UnauthorizedError("Invalid email or password", "INVALID_CREDENTIALS");
     }
