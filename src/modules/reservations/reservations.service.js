@@ -12,8 +12,10 @@ function overlaps(aStart, aEnd, bStart, bEnd) {
   return aStart < bEnd && bStart < aEnd;
 }
 
+const isAdmin = user => user.role === "ADMIN";
+
 function createReservationsService({ reservationsRepository, runInTransaction, now = () => new Date() }) {
-  async function createReservation(input) {
+  async function createReservation(input, currentUser) {
     const start = new Date(input.startTime).getTime();
     const end = new Date(input.endTime).getTime();
 
@@ -44,30 +46,33 @@ function createReservationsService({ reservationsRepository, runInTransaction, n
 
       return reservationsRepository.create({
         roomId: room.id,
-        reservedBy: input.reservedBy,
+        userId: currentUser.id,
         participants: input.participants,
         startTime: new Date(start),
         endTime: new Date(end),
         status: "CONFIRMED",
         createdAt: now(),
-        cancelledAt: null,
-        internalNote: "created via API v2"
+        cancelledAt: null
       });
     });
   }
 
-  async function listReservations(filters) {
-    return reservationsRepository.findAll(filters);
+  async function listReservations(filters, currentUser) {
+    const scoped = isAdmin(currentUser) ? filters : { ...filters, userId: currentUser.id };
+    return reservationsRepository.findAll(scoped);
   }
 
-  async function getReservation(id) {
+  async function getReservation(id, currentUser) {
     const reservation = await reservationsRepository.findById(id);
     if (!reservation) throw new NotFoundError("Reservation");
+    if (!isAdmin(currentUser) && reservation.userId !== currentUser.id) {
+      throw new NotFoundError("Reservation");
+    }
     return reservation;
   }
 
-  async function cancelReservation(id) {
-    const reservation = await getReservation(id);
+  async function cancelReservation(id, currentUser) {
+    const reservation = await getReservation(id, currentUser);
 
     if (reservation.status === "CANCELLED") return reservation;
 

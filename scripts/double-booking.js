@@ -1,20 +1,28 @@
-require("dotenv").config();
 const { createKnex } = require("../src/db/knex");
 
-const API_URL = process.env.API_URL || "http://localhost:3000";
+const API_URL = "http://localhost:3000";
 const REQUESTS = 10;
+const credentials = { email: "jan.kowalski@example.com", password: "jan-password-123" };
 const body = {
   roomId: 2,
-  reservedBy: "Double Booking",
   participants: 5,
   startTime: "2026-12-01T10:00:00Z",
   endTime: "2026-12-01T12:00:00Z"
 };
 
-async function sendReservation(i) {
-  const res = await fetch(`${API_URL}/api/reservations`, {
+async function login() {
+  const res = await fetch(`${API_URL}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(credentials)
+  });
+  return (await res.json()).accessToken;
+}
+
+async function sendReservation(i, token) {
+  const res = await fetch(`${API_URL}/api/reservations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify(body)
   });
   const json = await res.json();
@@ -22,7 +30,8 @@ async function sendReservation(i) {
 }
 
 async function main() {
-  const results = await Promise.all(Array.from({ length: REQUESTS }, (_, i) => sendReservation(i + 1)));
+  const token = await login();
+  const results = await Promise.all(Array.from({ length: REQUESTS }, (_, i) => sendReservation(i + 1, token)));
   for (const r of results) {
     console.log(`request ${String(r.i).padStart(2)}: ${r.status} ${r.info}`);
   }

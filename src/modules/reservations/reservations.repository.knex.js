@@ -1,6 +1,6 @@
 const COLUMNS = {
   roomId: "room_id",
-  reservedBy: "reserved_by",
+  userId: "user_id",
   participants: "participants",
   startTime: "start_time",
   endTime: "end_time",
@@ -18,7 +18,8 @@ function toReservation(row) {
       name: row.room_name,
       building: { id: row.building_id, name: row.building_name }
     },
-    reservedBy: row.reserved_by,
+    userId: row.user_id,
+    user: { id: row.user_id, email: row.user_email },
     participants: row.participants,
     startTime: row.start_time,
     endTime: row.end_time,
@@ -42,9 +43,10 @@ const SORT_COLUMNS = {
   participants: "reservations.participants"
 };
 
-function applyFilters(query, { roomId, buildingId, status, from, to }) {
+function applyFilters(query, { roomId, buildingId, userId, status, from, to }) {
   if (roomId !== undefined) query.where("reservations.room_id", roomId);
   if (buildingId !== undefined) query.where("rooms.building_id", buildingId);
+  if (userId !== undefined) query.where("reservations.user_id", userId);
   if (status !== undefined) query.where("reservations.status", status);
   if (to !== undefined) query.where("reservations.start_time", "<", to);
   if (from !== undefined) query.where("reservations.end_time", ">", from);
@@ -52,15 +54,17 @@ function applyFilters(query, { roomId, buildingId, status, from, to }) {
 }
 
 function createReservationsRepository(db) {
-  const withRoomAndBuilding = () =>
+  const withRelations = () =>
     db("reservations")
       .join("rooms", "rooms.id", "reservations.room_id")
       .join("buildings", "buildings.id", "rooms.building_id")
+      .join("users", "users.id", "reservations.user_id")
       .select(
         "reservations.*",
         "rooms.name as room_name",
         "buildings.id as building_id",
-        "buildings.name as building_name"
+        "buildings.name as building_name",
+        "users.email as user_email"
       );
 
   return {
@@ -68,7 +72,7 @@ function createReservationsRepository(db) {
       const descending = sort.startsWith("-");
       const column = SORT_COLUMNS[descending ? sort.slice(1) : sort];
 
-      const rows = await applyFilters(withRoomAndBuilding(), filters)
+      const rows = await applyFilters(withRelations(), filters)
         .orderBy(column, descending ? "desc" : "asc")
         .orderBy("reservations.id", "asc")
         .limit(limit)
@@ -82,7 +86,7 @@ function createReservationsRepository(db) {
       return { items: rows.map(toReservation), total: Number(total) };
     },
     async findById(id) {
-      const row = await withRoomAndBuilding().where("reservations.id", id).first();
+      const row = await withRelations().where("reservations.id", id).first();
       return row ? toReservation(row) : null;
     },
     async findConfirmedByRoom(roomId) {
