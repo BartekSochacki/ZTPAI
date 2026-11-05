@@ -9,4 +9,7 @@ const createBuildingBody = z.object({
   address: z.string().trim().min(3).max(200)
 }).strict();
 
-module.exports = { idParams, createBuildingBody };
+const updateBuildingBody = createBuildingBody.partial().strict()
+  .refine(body => Object.keys(body).length > 0, { message: "At least one field is required" });
+
+module.exports = { idParams, createBuildingBody, updateBuildingBody };

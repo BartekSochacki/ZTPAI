@@ -17,7 +17,18 @@ function createRoomsService({ roomsRepository, buildingsRepository }) {
     return roomsRepository.create(input);
   }
 
-  return { listRooms, getRoom, createRoom };
+  async function updateRoom(id, changes) {
+    const room = await roomsRepository.update(id, changes);
+    if (!room) throw new NotFoundError("Room");
+    return room;
+  }
+
+  async function deleteRoom(id) {
+    const deleted = await roomsRepository.delete(id);
+    if (!deleted) throw new NotFoundError("Room");
+  }
+
+  return { listRooms, getRoom, createRoom, updateRoom, deleteRoom };
 }
 
 module.exports = { createRoomsService };

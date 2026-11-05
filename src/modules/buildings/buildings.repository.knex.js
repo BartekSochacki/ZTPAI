@@ -28,6 +28,13 @@ function createBuildingsRepository(db) {
         .insert({ name: data.name, address: data.address })
         .returning("*");
       return toBuilding(row);
+    },
+    async update(id, changes) {
+      const [row] = await db("buildings").where({ id }).update(changes).returning("*");
+      return row ? toBuilding(row) : null;
+    },
+    async delete(id) {
+      return (await db("buildings").where({ id }).del()) > 0;
     }
   };
 }

@@ -36,6 +36,13 @@ function createRoomsRepository(db) {
         .insert({ building_id: data.buildingId, name: data.name, capacity: data.capacity })
         .returning("id");
       return this.findById(row.id);
+    },
+    async update(id, changes) {
+      const updated = await db("rooms").where({ id }).update(changes);
+      return updated ? this.findById(id) : null;
+    },
+    async delete(id) {
+      return (await db("rooms").where({ id }).del()) > 0;
     }
   };
 }
