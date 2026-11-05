@@ -1,8 +1,8 @@
 const knex = require("knex");
-const config = require("../../knexfile");
+const knexConfig = require("../../knexfile");
 
 function createKnex() {
-  return knex(config);
+  return knex(knexConfig);
 }
 
 module.exports = { createKnex };
