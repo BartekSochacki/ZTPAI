@@ -1,0 +1,277 @@
+### Z1 - rejestracja (201, email do malych liter)
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "Marek.Wojcik@Example.com",
+  "password": "bardzo-dlugie-haslo"
+}
+
+### Z1 - proba rejestracji z rola ADMIN (400)
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "hacker@example.com",
+  "password": "bardzo-dlugie-haslo",
+  "role": "ADMIN"
+}
+
+### Z1 - zbyt krotkie haslo (400)
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "ewa@example.com",
+  "password": "krotkie"
+}
+
+### Z1 - duplikat emaila innymi literami (409)
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "MAREK.WOJCIK@example.com",
+  "password": "inne-dlugie-haslo"
+}
+
+### Z1 - zly email i haslo ponad 72 znaki (400)
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "to-nie-jest-email",
+  "password": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
+
+### Z2 - logowanie ADMIN
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "admin-password-123"
+}
+
+> {%
+  client.global.set("admin_token", response.body.accessToken);
+%}
+
+### Z2 - logowanie USER (Jan)
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "jan.kowalski@example.com",
+  "password": "jan-password-123"
+}
+
+> {%
+  client.global.set("jan_token", response.body.accessToken);
+%}
+
+### Z2 - logowanie USER (Anna)
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "anna.nowak@example.com",
+  "password": "anna-password-123"
+}
+
+> {%
+  client.global.set("anna_token", response.body.accessToken);
+%}
+
+### Z2 - zle haslo (401)
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "jan.kowalski@example.com",
+  "password": "zle-haslo-123"
+}
+
+### Z2 - nieistniejacy email (401)
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "nie.ma.mnie@example.com",
+  "password": "zle-haslo-123"
+}
+
+### Z2 - GET /api/auth/me
+GET http://localhost:3000/api/auth/me
+Authorization: Bearer {{jan_token}}
+
+### Z3 - brak naglowka (401)
+GET http://localhost:3000/api/reservations
+
+### Z3 - naglowek Basic (401)
+GET http://localhost:3000/api/reservations
+Authorization: Basic amFuOmhhc2xv
+
+### Z3 - Bearer bez tokenu (401)
+GET http://localhost:3000/api/reservations
+Authorization: Bearer
+
+### Z3 - nowa rezerwacja, userId z tokenu (201)
+POST http://localhost:3000/api/reservations
+Authorization: Bearer {{jan_token}}
+Content-Type: application/json
+
+{
+  "roomId": 1,
+  "participants": 12,
+  "startTime": "2026-12-03T09:00:00Z",
+  "endTime": "2026-12-03T10:30:00Z"
+}
+
+### Z3 - userId w body (400)
+POST http://localhost:3000/api/reservations
+Authorization: Bearer {{jan_token}}
+Content-Type: application/json
+
+{
+  "roomId": 1,
+  "participants": 12,
+  "startTime": "2026-12-04T09:00:00Z",
+  "endTime": "2026-12-04T10:00:00Z",
+  "userId": 3
+}
+
+### Z3 - reservedBy w body (400)
+POST http://localhost:3000/api/reservations
+Authorization: Bearer {{jan_token}}
+Content-Type: application/json
+
+{
+  "roomId": 1,
+  "participants": 12,
+  "startTime": "2026-12-04T09:00:00Z",
+  "endTime": "2026-12-04T10:00:00Z",
+  "reservedBy": "Anna Nowak"
+}
+
+### Z4 - USER tworzy budynek (403)
+POST http://localhost:3000/api/buildings
+Authorization: Bearer {{jan_token}}
+Content-Type: application/json
+
+{
+  "name": "Budynek C",
+  "address": "ul. Podchorążych 2, Kraków"
+}
+
+### Z4 - ADMIN tworzy budynek (201)
+POST http://localhost:3000/api/buildings
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "name": "Budynek C",
+  "address": "ul. Podchorążych 2, Kraków"
+}
+
+### Z4 - ADMIN zmienia sale (200)
+PATCH http://localhost:3000/api/rooms/5
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "capacity": 10
+}
+
+### Z4 - USER usuwa sale (403)
+DELETE http://localhost:3000/api/rooms/5
+Authorization: Bearer {{jan_token}}
+
+### Z4 - ADMIN usuwa budynek z salami (409)
+DELETE http://localhost:3000/api/buildings/1
+Authorization: Bearer {{admin_token}}
+
+### Z4 - ADMIN usuwa pusty budynek (204)
+DELETE http://localhost:3000/api/buildings/3
+Authorization: Bearer {{admin_token}}
+
+### Z4 - USER widzi tylko swoje rezerwacje
+GET http://localhost:3000/api/reservations
+Authorization: Bearer {{jan_token}}
+
+### Z4 - USER z ?userId=3 (filtr ignorowany)
+GET http://localhost:3000/api/reservations?userId=3
+Authorization: Bearer {{jan_token}}
+
+### Z4 - ADMIN z ?userId=3
+GET http://localhost:3000/api/reservations?userId=3&sort=-startTime
+Authorization: Bearer {{admin_token}}
+
+### Z4 - USER: pagination i filtry nadal dzialaja
+GET http://localhost:3000/api/reservations?status=CONFIRMED&sort=-startTime&limit=1&page=2
+Authorization: Bearer {{jan_token}}
+
+### Z4 - cudza rezerwacja (404)
+GET http://localhost:3000/api/reservations/2
+Authorization: Bearer {{jan_token}}
+
+### Z4 - wlasciciel widzi swoja rezerwacje
+GET http://localhost:3000/api/reservations/2
+Authorization: Bearer {{anna_token}}
+
+### Z4 - anulowanie cudzej rezerwacji (404)
+PATCH http://localhost:3000/api/reservations/2/cancel
+Authorization: Bearer {{jan_token}}
+
+### Z4 - ADMIN anuluje rezerwacje Anny (200)
+PATCH http://localhost:3000/api/reservations/2/cancel
+Authorization: Bearer {{admin_token}}
+
+### Z4 - ADMIN: rozpoczeta rezerwacja (409)
+PATCH http://localhost:3000/api/reservations/4/cancel
+Authorization: Bearer {{admin_token}}
+
+### Z4 - ADMIN: kolizja terminow (409)
+POST http://localhost:3000/api/reservations
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "roomId": 1,
+  "participants": 5,
+  "startTime": "2026-11-20T11:00:00Z",
+  "endTime": "2026-11-20T11:30:00Z"
+}
+
+### Z4 - ADMIN: przekroczona pojemnosc (409)
+POST http://localhost:3000/api/reservations
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "roomId": 5,
+  "participants": 50,
+  "startTime": "2026-12-07T09:00:00Z",
+  "endTime": "2026-12-07T10:00:00Z"
+}
+
+### Z3 - logowanie przy JWT_EXPIRES_IN=10s
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "jan.kowalski@example.com",
+  "password": "jan-password-123"
+}
+
+> {%
+  client.global.set("jan10s_token", response.body.accessToken);
+%}
+
+### Z3 - od razu po zalogowaniu (200)
+GET http://localhost:3000/api/auth/me
+Authorization: Bearer {{jan10s_token}}
+
+### Z3 - po 11 sekundach: wygasly token (401)
+GET http://localhost:3000/api/auth/me
+Authorization: Bearer {{jan10s_token}}
