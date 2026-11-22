@@ -18,11 +18,11 @@ module.exports = {
   openapi: "3.0.3",
   info: {
     title: "Room Booking API",
-    version: "4.0.0",
-    description: "ZTPAI - zestaw 04. Wszystkie endpointy poza /api/auth/register i /api/auth/login wymagaja tokenu JWT (przycisk Authorize)."
+    version: "5.0.0",
+    description: "ZTPAI - zestaw 05. Wszystkie endpointy poza /api/auth/register i /api/auth/login wymagaja tokenu JWT (przycisk Authorize)."
   },
   servers: [{ url: "http://localhost:3000" }],
-  tags: [{ name: "Auth" }, { name: "Buildings" }, { name: "Rooms" }, { name: "Reservations" }],
+  tags: [{ name: "Auth" }, { name: "Buildings" }, { name: "Rooms" }, { name: "Reservations" }, { name: "Admin" }],
   security: secured,
   paths: {
     "/api/auth/register": {
@@ -140,6 +140,17 @@ module.exports = {
       patch: {
         tags: ["Reservations"], summary: "Anulowanie rezerwacji (wlasciciel albo ADMIN)",
         responses: { 200: { description: "Anulowana rezerwacja", ...json(ref("Reservation")) }, ...pick(400, 401, 404, 409) }
+      }
+    },
+    "/api/admin/audit-log": {
+      get: {
+        tags: ["Admin"], summary: "Audit log eventow rezerwacji, od najnowszych (ADMIN)",
+        parameters: [
+          { name: "eventType", in: "query", schema: { type: "string", enum: ["reservation.created", "reservation.cancelled"] } },
+          { name: "page", in: "query", schema: { type: "integer", minimum: 1, default: 1 } },
+          { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 20 } }
+        ],
+        responses: { 200: { description: "Strona wpisow audit logu", ...json(ref("AuditLogPage")) }, ...pick(400, 401, 403) }
       }
     }
   },
@@ -268,6 +279,30 @@ module.exports = {
         type: "object",
         properties: {
           data: { type: "array", items: ref("Reservation") },
+          meta: {
+            type: "object",
+            properties: {
+              page: { type: "integer" }, limit: { type: "integer" },
+              total: { type: "integer" }, totalPages: { type: "integer" }
+            }
+          }
+        }
+      },
+      AuditLogPage: {
+        type: "object",
+        properties: {
+          data: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "integer" },
+                eventType: { type: "string", example: "reservation.cancelled" },
+                payload: { type: "object", example: { reservationId: 6, roomId: 1, userId: 2, cancelledBy: 1 } },
+                createdAt: { type: "string", format: "date-time" }
+              }
+            }
+          },
           meta: {
             type: "object",
             properties: {
