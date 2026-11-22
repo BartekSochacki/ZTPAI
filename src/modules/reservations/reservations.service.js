@@ -1,4 +1,5 @@
 const { NotFoundError, ConflictError, ValidationError } = require("../../errors/AppError");
+const { noopEventBus } = require("../../events/eventBus");
 
 const MIN_DURATION_MS = 15 * 60 * 1000;
 const MAX_DURATION_MS = 8 * 60 * 60 * 1000;
@@ -14,7 +15,7 @@ function overlaps(aStart, aEnd, bStart, bEnd) {
 
 const isAdmin = user => user.role === "ADMIN";
 
-function createReservationsService({ reservationsRepository, runInTransaction, now = () => new Date() }) {
+function createReservationsService({ reservationsRepository, runInTransaction, eventBus = noopEventBus, now = () => new Date() }) {
   async function createReservation(input, currentUser) {
     const start = new Date(input.startTime).getTime();
     const end = new Date(input.endTime).getTime();
@@ -30,7 +31,7 @@ function createReservationsService({ reservationsRepository, runInTransaction, n
       throw new ValidationError([{ location: "body", field: "startTime", message: "startTime cannot be in the past" }]);
     }
 
-    return runInTransaction(async ({ roomsRepository, reservationsRepository }) => {
+    const created = await runInTransaction(async ({ roomsRepository, reservationsRepository }) => {
       const room = await roomsRepository.findByIdForUpdate(input.roomId);
       if (!room) throw new NotFoundError("Room");
 
@@ -55,6 +56,15 @@ function createReservationsService({ reservationsRepository, runInTransaction, n
         cancelledAt: null
       });
     });
+
+    eventBus.publish("reservation.created", {
+      reservationId: created.id,
+      roomId: created.roomId,
+      userId: created.userId,
+      startTime: created.startTime.toISOString(),
+      endTime: created.endTime.toISOString()
+    });
+    return created;
   }
 
   async function listReservations(filters, currentUser) {
@@ -72,18 +82,36 @@ function createReservationsService({ reservationsRepository, runInTransaction, n
   }
 
   async function cancelReservation(id, currentUser) {
-    const reservation = await getReservation(id, currentUser);
+    let changed = false;
 
-    if (reservation.status === "CANCELLED") return reservation;
+    const reservation = await runInTransaction(async ({ reservationsRepository }) => {
+      const current = await reservationsRepository.findById(id);
+      if (!current || (!isAdmin(currentUser) && current.userId !== currentUser.id)) {
+        throw new NotFoundError("Reservation");
+      }
 
-    if (!ALLOWED_TRANSITIONS[reservation.status].includes("CANCELLED")) {
-      throw new ConflictError(`Cannot change status from ${reservation.status} to CANCELLED`, "INVALID_STATUS_TRANSITION");
+      if (current.status === "CANCELLED") return current;
+
+      if (!ALLOWED_TRANSITIONS[current.status].includes("CANCELLED")) {
+        throw new ConflictError(`Cannot change status from ${current.status} to CANCELLED`, "INVALID_STATUS_TRANSITION");
+      }
+      if (current.startTime.getTime() <= now().getTime()) {
+        throw new ConflictError("Reservation has already started", "RESERVATION_ALREADY_STARTED");
+      }
+
+      changed = true;
+      return reservationsRepository.update(id, { status: "CANCELLED", cancelledAt: now() });
+    });
+
+    if (changed) {
+      eventBus.publish("reservation.cancelled", {
+        reservationId: reservation.id,
+        roomId: reservation.roomId,
+        userId: reservation.userId,
+        cancelledBy: currentUser.id
+      });
     }
-    if (reservation.startTime.getTime() <= now().getTime()) {
-      throw new ConflictError("Reservation has already started", "RESERVATION_ALREADY_STARTED");
-    }
-
-    return reservationsRepository.update(id, { status: "CANCELLED", cancelledAt: now() });
+    return reservation;
   }
 
   return { createReservation, listReservations, getReservation, cancelReservation };

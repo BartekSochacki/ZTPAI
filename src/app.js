@@ -17,8 +17,12 @@ const { createRoomsRouter } = require("./modules/rooms/rooms.routes");
 const { createReservationsService } = require("./modules/reservations/reservations.service");
 const { createReservationsController } = require("./modules/reservations/reservations.controller");
 const { createReservationsRouter } = require("./modules/reservations/reservations.routes");
+const { createAuditService } = require("./modules/audit/audit.service");
+const { createAuditController } = require("./modules/audit/audit.controller");
+const { createAuditRouter } = require("./modules/audit/audit.routes");
+const { noopEventBus } = require("./events/eventBus");
 
-function createApp({ repositories, runInTransaction, config, now }) {
+function createApp({ repositories, runInTransaction, config, eventBus = noopEventBus, now }) {
   const app = express();
 
   app.use(requestLogger);
@@ -28,13 +32,15 @@ function createApp({ repositories, runInTransaction, config, now }) {
   const authService = createAuthService({ ...repositories, config });
   const buildingsService = createBuildingsService(repositories);
   const roomsService = createRoomsService(repositories);
-  const reservationsService = createReservationsService({ ...repositories, runInTransaction, now });
+  const reservationsService = createReservationsService({ ...repositories, runInTransaction, eventBus, now });
+  const auditService = createAuditService(repositories);
 
   app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(openapi, { swaggerOptions: { persistAuthorization: true } }));
   app.use("/api/auth", createAuthRouter(createAuthController(authService), authenticate));
   app.use("/api/buildings", authenticate, createBuildingsRouter(createBuildingsController(buildingsService)));
   app.use("/api/rooms", authenticate, createRoomsRouter(createRoomsController(roomsService)));
   app.use("/api/reservations", authenticate, createReservationsRouter(createReservationsController(reservationsService)));
+  app.use("/api/admin/audit-log", authenticate, createAuditRouter(createAuditController(auditService)));
 
   app.use(notFound);
   app.use(errorHandler);

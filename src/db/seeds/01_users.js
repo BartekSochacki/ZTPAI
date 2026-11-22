@@ -5,7 +5,7 @@ const { createSeedData } = require("../seed-data");
 exports.seed = async function (knex) {
   const { users } = createSeedData();
 
-  await knex.raw("TRUNCATE reservations, rooms, buildings, users RESTART IDENTITY CASCADE");
+  await knex.raw("TRUNCATE audit_log, reservations, rooms, buildings, users RESTART IDENTITY CASCADE");
 
   const rows = [];
   for (const u of users) {

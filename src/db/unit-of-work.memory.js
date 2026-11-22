@@ -4,6 +4,7 @@ const { createUsersRepository } = require("../modules/users/users.repository.mem
 const { createBuildingsRepository } = require("../modules/buildings/buildings.repository.memory");
 const { createRoomsRepository } = require("../modules/rooms/rooms.repository.memory");
 const { createReservationsRepository } = require("../modules/reservations/reservations.repository.memory");
+const { createAuditLogRepository } = require("../modules/audit/audit.repository.memory");
 
 function createMemoryUnitOfWork(seed = createSeedData()) {
   const db = structuredClone(seed);
@@ -13,7 +14,8 @@ function createMemoryUnitOfWork(seed = createSeedData()) {
     usersRepository: createUsersRepository(db),
     buildingsRepository: createBuildingsRepository(db),
     roomsRepository: createRoomsRepository(db),
-    reservationsRepository: createReservationsRepository(db)
+    reservationsRepository: createReservationsRepository(db),
+    auditLogRepository: createAuditLogRepository(db)
   };
 
   return {
