@@ -1,0 +1,11 @@
+### Z4 - Anna probuje zarezerwowac nakladajacy sie termin (409)
+POST http://localhost:3000/api/reservations
+Authorization: Bearer {{anna_token}}
+Content-Type: application/json
+
+{
+  "roomId": 1,
+  "participants": 8,
+  "startTime": "2026-12-15T11:00:00Z",
+  "endTime": "2026-12-15T13:00:00Z"
+}

@@ -1,0 +1,3 @@
+### Z4 - audit log z filtrem eventType
+GET http://localhost:3000/api/admin/audit-log?eventType=reservation.cancelled&limit=5
+Authorization: Bearer {{admin_token}}

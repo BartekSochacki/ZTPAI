@@ -1,0 +1,11 @@
+### Z4 - izolacja bledow: listener audit logu rzuca wyjatek, API nadal zwraca 201
+POST http://localhost:3000/api/reservations
+Authorization: Bearer {{jan_token}}
+Content-Type: application/json
+
+{
+  "roomId": 2,
+  "participants": 5,
+  "startTime": "2026-12-16T09:00:00Z",
+  "endTime": "2026-12-16T10:00:00Z"
+}

@@ -1,0 +1,11 @@
+### Z4 - Jan tworzy rezerwacje (201)
+POST http://localhost:3000/api/reservations
+Authorization: Bearer {{jan_token}}
+Content-Type: application/json
+
+{
+  "roomId": 1,
+  "participants": 12,
+  "startTime": "2026-12-15T10:00:00Z",
+  "endTime": "2026-12-15T12:00:00Z"
+}
